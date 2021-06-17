@@ -34,7 +34,7 @@ def copy_ami(accountsList):
             for region in RegionList:
                 ec2Object = boto3.client('ec2', aws_access_key_id=creds['AccessKeyId'],
                                          aws_secret_access_key=creds['SecretAccessKey'],
-                                         aws_session_token=creds['SessionToken'], region_name='eu-west-1')
+                                         aws_session_token=creds['SessionToken'], region_name=region)
                 ec2Object.copy_image(
                     Description='test',
                     Encrypted=False,
