@@ -7,7 +7,9 @@ import re
 import botocore.exceptions
 import os
 SOURCE_REGION = 'eu-west-1'
-source_client  = boto3.client('ec2', region_name=SOURCE_REGION)
+IMAGE_ID = 'ami-016a03805d179e4d7'
+
+source_client  = boto3.resource('ec2', region_name=SOURCE_REGION)
 
 # Function for getting Ec2 and their instance details
 def copy_ami(accountsList):
@@ -23,26 +25,42 @@ def copy_ami(accountsList):
             RoleArn="arn:aws:iam::" + id + ":role/AWSCloudFormationStackSetExecutionRole",
             RoleSessionName="AssumeRoleSession1")
         creds = assumeRole['Credentials']
-        images = source_client.describe_images(Filters=[{'Name':'tag:share', 'Values':['true']}])
-        for ami in images['Images']:
-            if 'Tags' in ami:
-                name = [tag['Value'] for tag in ami['Tags'] if tag['Key'] == 'Name'][0]
-            else:
-                 name = ''
-            print (name, ami['Name'], ami['ImageId'], ami['State'])
-            
+       # image = source_client.describe_images(Filters=[{'Name':'tag:share', 'Values':['true']}])
+        image = source_client.Image(IMAGE_ID)
+        image.modify_attribute(
+         ImageId = image.id,
+         Attribute = 'launchPermission',
+         OperationType = 'add',
+         LaunchPermission = {
+         'Add' : [{ 'UserId': id }]
+                 }
+             )
+        
+        devices = image.block_device_mappings
+        for device in devices:
+            if 'Ebs' in device:
+                snapshot_id = device["Ebs"]["SnapshotId"]
+                snapshot = source_client.Snapshot(snapshot_id)
+                snapshot.modify_attribute(
+                    Attribute = 'createVolumePermission',
+                    CreateVolumePermission = {
+                        'Add' : [{ 'UserId': id }]
+                    },
+                    OperationType = 'add',
+                )
+        
             for region in RegionList:
                 ec2Object = boto3.client('ec2', aws_access_key_id=creds['AccessKeyId'],
                                          aws_secret_access_key=creds['SecretAccessKey'],
-                                         aws_session_token=creds['SessionToken'], region_name=region)
+                                         aws_session_token=creds['SessionToken'], region_name='eu-west-1')
                 ec2Object.copy_image(
                     Description='test',
                     Encrypted=False,
                     Name='amishare',
-                    SourceImageId=ami['ImageId'],
+                    SourceImageId=image.id,
                     SourceRegion=SOURCE_REGION,
                 )
-                print ('Copied Image ID is ' + response['ImageId'])
+                #print ('Copied Image ID is ' + response[SourceImageId])
 
 def accounts_list():
     accountsList, activeAccountsList = ([] for i in range(2))
