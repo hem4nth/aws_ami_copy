@@ -7,7 +7,7 @@ import re
 import botocore.exceptions
 import os
 SOURCE_REGION = 'eu-west-1'
-IMAGE_ID = 'ami-016a03805d179e4d7'
+IMAGE_ID = 'ami-016a0380xxxxxx'
 
 source_client  = boto3.resource('ec2', region_name=SOURCE_REGION)
 
@@ -52,7 +52,7 @@ def copy_ami(accountsList):
             for region in RegionList:
                 ec2Object = boto3.client('ec2', aws_access_key_id=creds['AccessKeyId'],
                                          aws_secret_access_key=creds['SecretAccessKey'],
-                                         aws_session_token=creds['SessionToken'], region_name='eu-west-1')
+                                         aws_session_token=creds['SessionToken'], region_name=region)
                 ec2Object.copy_image(
                     Description='test',
                     Encrypted=False,
